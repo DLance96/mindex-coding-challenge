@@ -73,6 +73,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         for (int i = 0; i < directReportIds.size(); i++) {
             Employee tempEmployee = employeeRepository.findByEmployeeId(directReportIds.get(i));
+
+            if(tempEmployee.getEmployeeId().equals(id)) {
+                returnReport.setNumberOfReports(-1);
+                return returnReport;
+            }
+
             List<Employee> tempDirectReports = tempEmployee.getDirectReports();
             int currentCount = totalReportIds.size();
 

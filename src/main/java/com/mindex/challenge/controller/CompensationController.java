@@ -21,6 +21,9 @@ public class CompensationController {
         return compensationService.create(compensation);
     }
 
+    // Chose to implement as listing of all the compensations in date order rather than only allowing a 1-1 mapping
+    // Additionally if this were to become a larger expected data output adding potential pagination in query fields
+    // or some date filter could be useful
     @GetMapping("/compensation/{id}")
     public Compensation[] read(@PathVariable String id) {
         LOG.debug("Received compensation read request for id [{}]", id);

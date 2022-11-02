@@ -10,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
@@ -250,7 +247,7 @@ public class EmployeeServiceImplTest {
                 HttpMethod.PUT,
                 new HttpEntity<>(createdEmployee1, headers),
                 Employee.class,
-                createdEmployee1.getEmployeeId()).getBody();
+                createdEmployee1.getEmployeeId());
 
         ReportingStructure reportingStructure =
                 restTemplate.exchange(employeeIdUrl + "/numberOfReports",
@@ -260,6 +257,89 @@ public class EmployeeServiceImplTest {
                         createdEmployee4.getEmployeeId()).getBody();
 
         assertEquals(reportingStructure.getNumberOfReports(), 3);
+    }
+
+    @Test
+    public void testNumberOfReportsLoopCase() {
+        // Testing if there is a loop back to the requested Employee back around and returns -1 which will result in
+        // a 500 error
+        Employee testEmployee1 = new Employee();
+        Employee testEmployee2 = new Employee();
+
+        Employee createdEmployee1 = restTemplate.postForEntity(employeeUrl, testEmployee1, Employee.class).getBody();
+
+        testEmployee2.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee1);
+            }
+        });
+        Employee createdEmployee2 = restTemplate.postForEntity(employeeUrl, testEmployee2, Employee.class).getBody();
+        createdEmployee1.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee2);
+            }
+        });
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        restTemplate.exchange(employeeIdUrl,
+                HttpMethod.PUT,
+                new HttpEntity<>(createdEmployee1, headers),
+                Employee.class,
+                createdEmployee1.getEmployeeId());
+
+        ReportingStructure reportingStructure = employeeService.computeNumberOfReports(createdEmployee1.getEmployeeId());
+
+        assertEquals(reportingStructure.getNumberOfReports(), -1 );
+    }
+
+    @Test
+    public void testNumberOfReportsComplexLoopCase() {
+        // Case of 1 under 2, 2 under 3, 3 under 4, and 1 under 4
+        Employee testEmployee1 = new Employee();
+        Employee testEmployee2 = new Employee();
+        Employee testEmployee3 = new Employee();
+        Employee testEmployee4 = new Employee();
+
+        Employee createdEmployee1 = restTemplate.postForEntity(employeeUrl, testEmployee1, Employee.class).getBody();
+        testEmployee2.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee1);
+            }
+        });
+        Employee createdEmployee2 = restTemplate.postForEntity(employeeUrl, testEmployee2, Employee.class).getBody();
+        testEmployee3.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee2);
+            }
+        });
+        Employee createdEmployee3 = restTemplate.postForEntity(employeeUrl, testEmployee3, Employee.class).getBody();
+        testEmployee4.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee3);
+            }
+        });
+        Employee createdEmployee4 = restTemplate.postForEntity(employeeUrl, testEmployee4, Employee.class).getBody();
+
+        createdEmployee1.setDirectReports(new ArrayList<Employee>() {
+            {
+                add(createdEmployee4);
+            }
+        });
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        restTemplate.exchange(employeeIdUrl,
+                HttpMethod.PUT,
+                new HttpEntity<>(createdEmployee1, headers),
+                Employee.class,
+                createdEmployee1.getEmployeeId());
+
+        ReportingStructure reportingStructure = employeeService.computeNumberOfReports(createdEmployee1.getEmployeeId());
+
+        assertEquals(reportingStructure.getNumberOfReports(), -1 );
     }
 
 
